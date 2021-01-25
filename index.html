@@ -1,0 +1,187 @@
+<style>
+  .sumo-ring {
+    background-color: #fffbed;
+    box-sizing: border-box;
+    width: 8rem;
+    height: 8rem;
+    border: 1px solid black;
+    border-radius: 50%;
+    position: absolute;
+    left: calc(50% - 0.5 * 8rem);
+    top: calc(50% - 0.5 * 8rem);
+  }
+
+  .sumo {
+    background-color: #ffe69a;
+    box-sizing: border-box;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid black;
+    border-radius: 50%;
+    position: absolute;
+    top: calc(50% - 0.5 * 2rem);
+  }
+
+  .sumo1 {
+    left: 1rem;
+  }
+
+  .sumo2 {
+    left: calc(8rem - 2rem - 1rem);
+  }
+</style>
+
+<div class="sumo-ring">
+  <div class="sumo sumo1"></div>
+  <div class="sumo sumo2"></div>
+</div>
+
+<script>
+  const keyStates = new Map([
+    ['KeyW', false],
+    ['KeyA', false],
+    ['KeyS', false],
+    ['KeyD', false],
+    ['ArrowUp', false],
+    ['ArrowLeft', false],
+    ['ArrowDown', false],
+    ['ArrowRight', false]
+  ])
+
+  const keyToCharacterMapping = new Map([
+    ['KeyW', 0],
+    ['KeyA', 0],
+    ['KeyS', 0],
+    ['KeyD', 0],
+    ['ArrowUp', 1],
+    ['ArrowLeft', 1],
+    ['ArrowDown', 1],
+    ['ArrowRight', 1]
+  ])
+
+  const movementFactor = 0.5
+  const movementStep = 1
+
+  const movementMapping = new Map([
+    ['KeyW', {x: 0, y: -movementStep}],
+    ['KeyA', {x: -movementStep, y: 0}],
+    ['KeyS', {x: 0, y: movementStep}],
+    ['KeyD', {x: movementStep, y: 0}],
+    ['ArrowUp', {x: 0, y: -movementStep}],
+    ['ArrowLeft', {x: -movementStep, y: 0}],
+    ['ArrowDown', {x: 0, y: movementStep}],
+    ['ArrowRight', {x: movementStep, y: 0}]
+  ])
+
+  function setKeyState(code, state) {
+    if (keyStates.has(code)) {
+      keyStates.set(code, state)
+    }
+  }
+
+  window.addEventListener('keydown', function (event) {
+    const code = event.code
+    setKeyState(code, true)
+  })
+
+  window.addEventListener('keyup', function (event) {
+    const code = event.code
+    setKeyState(code, false)
+  })
+
+  function onTick() {
+    moveCharacters()
+    requestAnimationFrame(onTick)
+  }
+
+  function moveCharacters() {
+    const characters = getCharacters()
+    for (const [code, state] of keyStates) {
+      if (isKeyDown(state)) {
+        const characterIndex = keyToCharacterMapping.get(code)
+        const character = characters[characterIndex]
+        const movement = movementMapping.get(code)
+        moveCharacter(character, movement)
+        if (areCharactersColliding(characters[0], characters[1])) {
+          const pushedCharacter = characters[(characterIndex + 1) % 2]
+          const angle = Math.atan2(
+            pushedCharacter.y - character.y,
+            pushedCharacter.x - character.x
+          )
+          const pushedCharacterMovement = {
+            x: movementStep * Math.cos(angle),
+            y: movementStep * Math.sin(angle)
+          }
+          moveCharacter(pushedCharacter, pushedCharacterMovement)
+        }
+      }
+    }
+    updateCharacterPositions(characters)
+  }
+
+  function getCharacters() {
+    const $characters = getCharacterElements()
+    const characters = $characters.map($character => ({
+      element: $character,
+      ...getCharacterPosition($character)
+    }))
+    return characters
+  }
+
+  function getCharacterElements() {
+    return Array.from(document.querySelectorAll('.sumo'))
+  }
+
+  function getCharacterPosition($character) {
+    const $sumoRing = document.querySelector('.sumo-ring')
+    const sumoRingBoundingClientRect = $sumoRing.getBoundingClientRect()
+    const boundingClientRect = $character.getBoundingClientRect()
+    return {
+      x: boundingClientRect.x - sumoRingBoundingClientRect.x - 1,
+      y: boundingClientRect.y - sumoRingBoundingClientRect.y - 1
+    }
+  }
+
+  function isKeyDown(state) {
+    return state
+  }
+
+  function moveCharacter(character, movement) {
+    character.x += movementFactor * movement.x
+    character.y += movementFactor * movement.y
+  }
+
+  const characterRadius = (2 * 16) / 2
+
+  function areCharactersColliding(characterA, characterB) {
+    const characterACenter = getCharacterCenter(characterA)
+    const characterBCenter = getCharacterCenter(characterB)
+    return distance(characterACenter, characterBCenter) < 2 * characterRadius
+  }
+
+  function getCharacterCenter(character) {
+    const position = {
+      x: character.x,
+      y: character.y
+    }
+    position.x += characterRadius
+    position.y += characterRadius
+    return position
+  }
+
+  function distance(a, b) {
+    return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2)
+  }
+
+  function updateCharacterPositions(characters) {
+    characters.forEach(updateCharacterPosition)
+  }
+
+  function updateCharacterPosition(character) {
+    const {element, x, y} = character
+    element.style.left = x + 'px'
+    element.style.top = y + 'px'
+  }
+
+  requestAnimationFrame(onTick)
+</script>
